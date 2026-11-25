@@ -1,0 +1,1735 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head>
+    <meta charset="UTF-8">
+<!-- This site is hosted on Netlify. Anyone can build and deploy a site
+     like this one for free: https://netlify.new/?utm_campaign=loops&utm_source=ai-legible&utm_medium=owned&utm_content=comment&utm_id=00c0973e-1892-4711-8d7e-c2de30adea6d
+     Netlify hosting facts for this site: static/SSR served via Netlify Edge. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>استمارة معلومات الطلاب والتلاميذ لنظام EMIS - وزارة التربية</title>
+    <!-- تحميل Tailwind CSS لتنسيق واجهة الإدخال والتحكم -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- تحميل خطوط عربية رسمية واضحة -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;family=Amiri:wght@400;700&amp;display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f1f5f9;
+        }
+
+        /* =========================================================
+           تنسيقات ورقة الاستمارة الرسمية (مقاس A4 القياسي)
+           ========================================================= */
+        .a4-sheet {
+            width: 210mm;
+            height: 297mm;
+            background: #ffffff;
+            margin: 0 auto;
+            padding: 6mm;
+            box-sizing: border-box;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            position: relative;
+            color: #000000;
+            overflow: hidden;
+        }
+
+        .outer-ornate-border {
+            width: 100%;
+            height: 100%;
+            border: 3.5px solid #0b3b70;
+            padding: 3px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .inner-ornate-border {
+            width: 100%;
+            height: 100%;
+            border: 1.5px solid #0b3b70;
+            padding: 5mm 6mm;
+            box-sizing: border-box;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .corner-box {
+            position: absolute;
+            width: 11px;
+            height: 11px;
+            border: 2.5px solid #0b3b70;
+            background: #ffffff;
+            z-index: 10;
+        }
+        .corner-tl { top: -4px; left: -4px; }
+        .corner-tr { top: -4px; right: -4px; }
+        .corner-bl { bottom: -4px; left: -4px; }
+        .corner-br { bottom: -4px; right: -4px; }
+
+        .section-banner {
+            background-color: #0077b6 !important;
+            color: #ffffff !important;
+            font-weight: 700;
+            font-size: 13.5px;
+            padding: 4px 12px;
+            margin-top: 4px;
+            margin-bottom: 6px;
+            letter-spacing: 0.2px;
+        }
+
+        .field-row {
+            display: flex;
+            align-items: baseline;
+            margin-bottom: 5px;
+            font-size: 12.5px;
+            font-weight: 700;
+        }
+
+        .field-group {
+            display: flex;
+            align-items: baseline;
+            padding-left: 6px;
+        }
+
+        .field-label {
+            white-space: nowrap;
+            color: #000000;
+            margin-left: 4px;
+        }
+
+        .dotted-value {
+            flex-grow: 1;
+            border-bottom: 1.5px dotted #333333;
+            min-height: 18px;
+            padding: 0 4px;
+            text-align: center;
+            font-weight: 700;
+            color: #0b3b70;
+            font-size: 12.5px;
+            line-height: 1.2;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .form-checkbox {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 13px;
+            height: 13px;
+            border: 1.5px solid #000000;
+            margin-left: 5px;
+            margin-right: 2px;
+            font-size: 11px;
+            font-weight: 900;
+            line-height: 1;
+            color: #0b3b70;
+            vertical-align: middle;
+            background-color: #fff;
+        }
+
+        .photo-box {
+            width: 28mm;
+            height: 34mm;
+            border: 1.5px dashed #475569;
+            background-color: #dbeafe;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .photo-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        @media screen and (max-width: 1280px) {
+            .preview-wrapper {
+                overflow-x: auto;
+                padding-bottom: 20px;
+            }
+        }
+
+        /* =========================================================
+           إعدادات الطباعة الفعلية (@media print)
+           ========================================================= */
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+
+        @media print {
+            body {
+                background: #ffffff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .main-container {
+                display: block !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+            }
+
+            .preview-wrapper {
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: visible !important;
+                background: none !important;
+            }
+
+            .a4-sheet {
+                width: 210mm !important;
+                height: 297mm !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+                page-break-after: avoid;
+                page-break-inside: avoid;
+            }
+
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+    </style>
+<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.fixed{position:fixed}.sticky{position:sticky}.inset-0{inset:0px}.bottom-4{bottom:1rem}.left-4{left:1rem}.top-0{top:0px}.z-50{z-index:50}.mx-auto{margin-left:auto;margin-right:auto}.mx-1{margin-left:0.25rem;margin-right:0.25rem}.my-2{margin-top:0.5rem;margin-bottom:0.5rem}.mb-1{margin-bottom:0.25rem}.mb-1\.5{margin-bottom:0.375rem}.mb-2{margin-bottom:0.5rem}.mb-6{margin-bottom:1.5rem}.mb-3{margin-bottom:0.75rem}.mt-2{margin-top:0.5rem}.block{display:block}.inline-block{display:inline-block}.flex{display:flex}.inline-flex{display:inline-flex}.grid{display:grid}.hidden{display:none}.h-10{height:2.5rem}.h-2\.5{height:0.625rem}.h-4{height:1rem}.h-6{height:1.5rem}.h-5{height:1.25rem}.max-h-\[90vh\]{max-height:90vh}.max-h-\[calc\(100vh-140px\)\]{max-height:calc(100vh - 140px)}.w-10{width:2.5rem}.w-2\.5{width:0.625rem}.w-4{width:1rem}.w-6{width:1.5rem}.w-full{width:100%}.w-3{width:0.75rem}.w-5{width:1.25rem}.w-\[22\%\]{width:22%}.w-\[23\%\]{width:23%}.w-\[25\%\]{width:25%}.w-\[26\%\]{width:26%}.w-\[30\%\]{width:30%}.w-\[32\%\]{width:32%}.w-\[33\%\]{width:33%}.w-\[34\%\]{width:34%}.w-\[35\%\]{width:35%}.w-\[36\%\]{width:36%}.w-\[43\%\]{width:43%}.w-\[45\%\]{width:45%}.w-\[48\%\]{width:48%}.w-\[50\%\]{width:50%}.w-\[52\%\]{width:52%}.max-w-2xl{max-width:42rem}.max-w-lg{max-width:32rem}.max-w-screen-2xl{max-width:1536px}.max-w-sm{max-width:24rem}.max-w-\[210mm\]{max-width:210mm}.flex-1{flex:1 1 0%}@keyframes pulse{50%{opacity:.5}}.animate-pulse{animation:pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite}.cursor-pointer{cursor:pointer}.grid-cols-1{grid-template-columns:repeat(1, minmax(0, 1fr))}.grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-start{align-items:flex-start}.items-center{align-items:center}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-1\.5{gap:0.375rem}.gap-2{gap:0.5rem}.gap-2\.5{gap:0.625rem}.gap-3{gap:0.75rem}.gap-4{gap:1rem}.gap-6{gap:1.5rem}.space-y-1\.5 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.375rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.375rem * var(--tw-space-y-reverse))}.space-y-2 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.5rem * var(--tw-space-y-reverse))}.space-y-3 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.75rem * var(--tw-space-y-reverse))}.space-y-4 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem * var(--tw-space-y-reverse))}.space-y-6 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.5rem * var(--tw-space-y-reverse))}.space-y-1 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.25rem * var(--tw-space-y-reverse))}.space-y-2\.5 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.625rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.625rem * var(--tw-space-y-reverse))}.overflow-hidden{overflow:hidden}.overflow-x-auto{overflow-x:auto}.overflow-y-auto{overflow-y:auto}.rounded{border-radius:0.25rem}.rounded-2xl{border-radius:1rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:0.5rem}.rounded-md{border-radius:0.375rem}.rounded-xl{border-radius:0.75rem}.border{border-width:1px}.border-b{border-bottom-width:1px}.border-t{border-top-width:1px}.border-t-\[2\.5px\]{border-top-width:2.5px}.border-dashed{border-style:dashed}.border-sky-100{--tw-border-opacity:1;border-color:rgb(224 242 254 / var(--tw-border-opacity, 1))}.border-sky-200{--tw-border-opacity:1;border-color:rgb(186 230 253 / var(--tw-border-opacity, 1))}.border-sky-400{--tw-border-opacity:1;border-color:rgb(56 189 248 / var(--tw-border-opacity, 1))}.border-sky-600{--tw-border-opacity:1;border-color:rgb(2 132 199 / var(--tw-border-opacity, 1))}.border-slate-100{--tw-border-opacity:1;border-color:rgb(241 245 249 / var(--tw-border-opacity, 1))}.border-slate-200{--tw-border-opacity:1;border-color:rgb(226 232 240 / var(--tw-border-opacity, 1))}.border-slate-300{--tw-border-opacity:1;border-color:rgb(203 213 225 / var(--tw-border-opacity, 1))}.border-slate-700{--tw-border-opacity:1;border-color:rgb(51 65 85 / var(--tw-border-opacity, 1))}.border-black{--tw-border-opacity:1;border-color:rgb(0 0 0 / var(--tw-border-opacity, 1))}.bg-amber-500{--tw-bg-opacity:1;background-color:rgb(245 158 11 / var(--tw-bg-opacity, 1))}.bg-emerald-100{--tw-bg-opacity:1;background-color:rgb(209 250 229 / var(--tw-bg-opacity, 1))}.bg-emerald-400{--tw-bg-opacity:1;background-color:rgb(52 211 153 / var(--tw-bg-opacity, 1))}.bg-emerald-600{--tw-bg-opacity:1;background-color:rgb(5 150 105 / var(--tw-bg-opacity, 1))}.bg-rose-100{--tw-bg-opacity:1;background-color:rgb(255 228 230 / var(--tw-bg-opacity, 1))}.bg-rose-600{--tw-bg-opacity:1;background-color:rgb(225 29 72 / var(--tw-bg-opacity, 1))}.bg-sky-50{--tw-bg-opacity:1;background-color:rgb(240 249 255 / var(--tw-bg-opacity, 1))}.bg-sky-50\/70{background-color:rgb(240 249 255 / 0.7)}.bg-sky-600{--tw-bg-opacity:1;background-color:rgb(2 132 199 / var(--tw-bg-opacity, 1))}.bg-sky-700{--tw-bg-opacity:1;background-color:rgb(3 105 161 / var(--tw-bg-opacity, 1))}.bg-sky-800{--tw-bg-opacity:1;background-color:rgb(7 89 133 / var(--tw-bg-opacity, 1))}.bg-sky-900{--tw-bg-opacity:1;background-color:rgb(12 74 110 / var(--tw-bg-opacity, 1))}.bg-slate-100{--tw-bg-opacity:1;background-color:rgb(241 245 249 / var(--tw-bg-opacity, 1))}.bg-slate-50{--tw-bg-opacity:1;background-color:rgb(248 250 252 / var(--tw-bg-opacity, 1))}.bg-slate-700{--tw-bg-opacity:1;background-color:rgb(51 65 85 / var(--tw-bg-opacity, 1))}.bg-slate-800{--tw-bg-opacity:1;background-color:rgb(30 41 59 / var(--tw-bg-opacity, 1))}.bg-slate-900{--tw-bg-opacity:1;background-color:rgb(15 23 42 / var(--tw-bg-opacity, 1))}.bg-slate-900\/60{background-color:rgb(15 23 42 / 0.6)}.bg-slate-900\/70{background-color:rgb(15 23 42 / 0.7)}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255 / var(--tw-bg-opacity, 1))}.bg-white\/10{background-color:rgb(255 255 255 / 0.1)}.bg-sky-100{--tw-bg-opacity:1;background-color:rgb(224 242 254 / var(--tw-bg-opacity, 1))}.p-2{padding:0.5rem}.p-2\.5{padding:0.625rem}.p-3{padding:0.75rem}.p-3\.5{padding:0.875rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.px-2\.5{padding-left:0.625rem;padding-right:0.625rem}.px-3{padding-left:0.75rem;padding-right:0.75rem}.px-4{padding-left:1rem;padding-right:1rem}.px-5{padding-left:1.25rem;padding-right:1.25rem}.py-1{padding-top:0.25rem;padding-bottom:0.25rem}.py-1\.5{padding-top:0.375rem;padding-bottom:0.375rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.py-2\.5{padding-top:0.625rem;padding-bottom:0.625rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.py-3\.5{padding-top:0.875rem;padding-bottom:0.875rem}.px-1{padding-left:0.25rem;padding-right:0.25rem}.px-2{padding-left:0.5rem;padding-right:0.5rem}.pb-2{padding-bottom:0.5rem}.pb-3{padding-bottom:0.75rem}.pt-1{padding-top:0.25rem}.pt-3{padding-top:0.75rem}.pl-0{padding-left:0px}.pl-4{padding-left:1rem}.pr-1{padding-right:0.25rem}.pt-2{padding-top:0.5rem}.pt-4{padding-top:1rem}.text-center{text-align:center}.text-right{text-align:right}.font-sans{font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"}.text-\[11px\]{font-size:11px}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:0.75rem;line-height:1rem}.text-\[12\.5px\]{font-size:12.5px}.text-\[12px\]{font-size:12px}.text-\[15px\]{font-size:15px}.font-bold{font-weight:700}.font-semibold{font-weight:600}.font-extrabold{font-weight:800}.leading-relaxed{line-height:1.625}.leading-tight{line-height:1.25}.leading-snug{line-height:1.375}.text-slate-800{--tw-text-opacity:1;color:rgb(30 41 59 / var(--tw-text-opacity, 1))}.text-emerald-300{--tw-text-opacity:1;color:rgb(110 231 183 / var(--tw-text-opacity, 1))}.text-emerald-700{--tw-text-opacity:1;color:rgb(4 120 87 / var(--tw-text-opacity, 1))}.text-rose-600{--tw-text-opacity:1;color:rgb(225 29 72 / var(--tw-text-opacity, 1))}.text-rose-700{--tw-text-opacity:1;color:rgb(190 18 60 / var(--tw-text-opacity, 1))}.text-sky-100{--tw-text-opacity:1;color:rgb(224 242 254 / var(--tw-text-opacity, 1))}.text-sky-200{--tw-text-opacity:1;color:rgb(186 230 253 / var(--tw-text-opacity, 1))}.text-sky-300{--tw-text-opacity:1;color:rgb(125 211 252 / var(--tw-text-opacity, 1))}.text-sky-600{--tw-text-opacity:1;color:rgb(2 132 199 / var(--tw-text-opacity, 1))}.text-sky-700{--tw-text-opacity:1;color:rgb(3 105 161 / var(--tw-text-opacity, 1))}.text-sky-900{--tw-text-opacity:1;color:rgb(12 74 110 / var(--tw-text-opacity, 1))}.text-sky-950{--tw-text-opacity:1;color:rgb(8 47 73 / var(--tw-text-opacity, 1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184 / var(--tw-text-opacity, 1))}.text-slate-600{--tw-text-opacity:1;color:rgb(71 85 105 / var(--tw-text-opacity, 1))}.text-slate-700{--tw-text-opacity:1;color:rgb(51 65 85 / var(--tw-text-opacity, 1))}.text-slate-900{--tw-text-opacity:1;color:rgb(15 23 42 / var(--tw-text-opacity, 1))}.text-slate-950{--tw-text-opacity:1;color:rgb(2 6 23 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.text-black{--tw-text-opacity:1;color:rgb(0 0 0 / var(--tw-text-opacity, 1))}.text-red-600{--tw-text-opacity:1;color:rgb(220 38 38 / var(--tw-text-opacity, 1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139 / var(--tw-text-opacity, 1))}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgb(0 0 0 / 0.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -2px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.backdrop-blur-sm{--tw-backdrop-blur:blur(4px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition{transition-property:color, background-color, border-color, fill, stroke, opacity, box-shadow, transform, filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.hover\:bg-amber-600:hover{--tw-bg-opacity:1;background-color:rgb(217 119 6 / var(--tw-bg-opacity, 1))}.hover\:bg-emerald-700:hover{--tw-bg-opacity:1;background-color:rgb(4 120 87 / var(--tw-bg-opacity, 1))}.hover\:bg-rose-200:hover{--tw-bg-opacity:1;background-color:rgb(254 205 211 / var(--tw-bg-opacity, 1))}.hover\:bg-rose-700:hover{--tw-bg-opacity:1;background-color:rgb(190 18 60 / var(--tw-bg-opacity, 1))}.hover\:bg-sky-50:hover{--tw-bg-opacity:1;background-color:rgb(240 249 255 / var(--tw-bg-opacity, 1))}.hover\:bg-sky-700:hover{--tw-bg-opacity:1;background-color:rgb(3 105 161 / var(--tw-bg-opacity, 1))}.hover\:bg-sky-800:hover{--tw-bg-opacity:1;background-color:rgb(7 89 133 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-200:hover{--tw-bg-opacity:1;background-color:rgb(226 232 240 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-600:hover{--tw-bg-opacity:1;background-color:rgb(71 85 105 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-700:hover{--tw-bg-opacity:1;background-color:rgb(51 65 85 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-900:hover{--tw-bg-opacity:1;background-color:rgb(15 23 42 / var(--tw-bg-opacity, 1))}.hover\:bg-sky-200:hover{--tw-bg-opacity:1;background-color:rgb(186 230 253 / var(--tw-bg-opacity, 1))}.hover\:text-slate-700:hover{--tw-text-opacity:1;color:rgb(51 65 85 / var(--tw-text-opacity, 1))}.hover\:underline:hover{-webkit-text-decoration-line:underline;text-decoration-line:underline}.focus\:border-sky-500:focus{--tw-border-opacity:1;border-color:rgb(14 165 233 / var(--tw-border-opacity, 1))}.focus\:ring-2:focus{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000)}.focus\:ring-sky-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(14 165 233 / var(--tw-ring-opacity, 1))}@media (min-width: 640px){.sm\:grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.sm\:grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}.sm\:text-lg{font-size:1.125rem;line-height:1.75rem}.sm\:text-sm{font-size:0.875rem;line-height:1.25rem}.sm\:text-base{font-size:1rem;line-height:1.5rem}}@media (min-width: 1024px){.lg\:p-6{padding:1.5rem}}@media (min-width: 1280px){.xl\:sticky{position:sticky}.xl\:top-20{top:5rem}.xl\:col-span-5{grid-column:span 5 / span 5}.xl\:col-span-7{grid-column:span 7 / span 7}.xl\:grid-cols-12{grid-template-columns:repeat(12, minmax(0, 1fr))}}</style>
+<style>
+:root{--emis-blue:#0879a8;--emis-navy:#123b59}
+html{scroll-behavior:smooth}body{background:linear-gradient(145deg,#edf5fb,#f7f9fc 55%,#edf4fa)}
+header.no-print{background:linear-gradient(110deg,#0b344e,#075c7e 62%,#087fa7);backdrop-filter:blur(12px)}
+.main-container{gap:22px}.main-container>section{border:1px solid #e1eaf1;box-shadow:0 12px 36px rgba(20,57,82,.08);border-radius:20px}
+.main-container input:not([type=radio]):not([type=checkbox]),.main-container select,.main-container textarea{min-height:42px;border-radius:11px;transition:border-color .18s,box-shadow .18s}
+.main-container input:focus,.main-container select:focus,.main-container textarea:focus{outline:0;border-color:#1595c3;box-shadow:0 0 0 3px rgba(21,149,195,.12)}
+.section-banner{border-radius:9px!important}.a4-sheet{border-radius:2px}
+.emis-modal{position:fixed;inset:0;background:rgba(8,28,44,.62);backdrop-filter:blur(5px);z-index:1000;display:none;align-items:center;justify-content:center;padding:14px}
+.emis-modal.open{display:flex}.emis-modal-card{background:#fff;width:min(900px,100%);max-height:90vh;overflow:auto;border-radius:20px;padding:20px;box-shadow:0 24px 80px rgba(0,0,0,.22)}
+.emis-table-wrap{overflow:auto;border:1px solid #e2e8f0;border-radius:12px}.emis-table{width:100%;border-collapse:collapse;min-width:580px;font-size:13px}
+.emis-table th,.emis-table td{padding:10px 12px;border-bottom:1px solid #edf1f5;text-align:right;white-space:nowrap}
+.emis-table th{background:#f0f7fb;color:#16445f;font-weight:800;position:sticky;top:0}.emis-table tr:last-child td{border-bottom:0}
+.emis-action{padding:8px 12px;border-radius:9px;background:#0879a8;color:white;font-weight:700;font-size:12px}
+.emis-action.secondary{background:#eaf3f8;color:#16445f}.emis-hint{background:#eff8fc;border:1px solid #d5edf7;color:#24556d;padding:12px;border-radius:12px;font-size:12px;line-height:1.8}
+@media(max-width:1279px){.main-container{display:flex!important;flex-direction:column!important;padding:12px!important}.main-container>section{width:100%;position:static!important}.main-container form{max-height:none!important;overflow:visible!important}.preview-wrapper{width:100%;overflow-x:auto}}
+@media(max-width:640px){header.no-print>div{padding:10px!important;gap:10px}header.no-print h1{font-size:14px!important}header.no-print p{font-size:10px!important}header.no-print>div>div:last-child{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}header.no-print button{justify-content:center;padding:9px 7px!important;font-size:11px!important}.main-container{padding:9px!important;gap:14px!important}.main-container>section{border-radius:15px}.main-container form{padding:13px!important}.main-container .grid-cols-2,.main-container .sm\:grid-cols-2{grid-template-columns:1fr!important}.main-container .sm\:grid-cols-3{grid-template-columns:repeat(2,minmax(0,1fr))!important}.emis-modal-card{padding:14px;border-radius:15px}}
+@media print{body{background:#fff!important}.a4-sheet{border-radius:0!important}}
+</style>
+
+</head>
+<body class="text-slate-800">
+
+    <!-- =========================================================
+         إعدادات الربط السريع للمشرف / المدرسة (عدّل القيم أدناه عند الحاجة)
+         ========================================================= -->
+    <script>
+        const APP_CONFIG = {
+            // 1. ضع هنا رابط Google Apps Script Web App لحفظ البيانات تلقائياً في Google Sheets (اختياري)
+            GOOGLE_SCRIPT_URL: "",
+            // 2. ضع هنا رقم واتساب المدرسة/الأستاذ بصيغة دولية بدون + أو أصفار بادئة (مثال: 9647701234567) لتفعيل الإرسال المباشر عبر واتساب
+            SCHOOL_WHATSAPP: "",
+            // اسم المدرسة يظهر في الرسائل المرسلة
+            SCHOOL_NAME: "إعدادية أجيال المستقبل للبنين"
+        };
+    </script>
+
+    <!-- شريط علوي للتحكم السريع (يختفي عند الطباعة) -->
+    <header class="no-print bg-sky-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-screen-2xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/10 p-2 rounded-lg">
+                    <svg class="w-6 h-6 text-sky-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base sm:text-lg leading-tight">استمارة EMIS الإلكترونية لأولياء الأمور</h1>
+                    <p class="text-xs text-sky-200">جمهورية العراق - وزارة التربية | تعبئة وإرسال وحفظ البيانات بصيغة منظمة</p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" onclick="openSetupModal()" class="px-3 py-2 text-xs sm:text-sm bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg transition shadow-sm flex items-center gap-1.5" title="إعداد ربط Google Sheets أو رقم واتساب">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <span>إعدادات الربط</span>
+                </button>
+                <button type="button" onclick="fillDemoData()" class="px-3 py-2 text-xs sm:text-sm bg-sky-800 hover:bg-sky-700 text-sky-100 rounded-lg transition border border-sky-600 flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    <span>تجريبي</span>
+                </button>
+                <button type="button" onclick="confirmReset()" class="px-3 py-2 text-xs sm:text-sm bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition shadow-sm flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    <span>مسح</span>
+                </button>
+                <button type="button" onclick="document.getElementById('excelImportInput').click()" class="px-3 py-2 text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition">استيراد Excel</button>
+                <button type="button" onclick="openRecordsModal()" class="px-3 py-2 text-xs sm:text-sm bg-white/15 hover:bg-white/25 text-white rounded-lg transition border border-white/20">سجل الطلاب</button>
+                <button type="button" onclick="downloadStudentPDF()" class="px-3 py-2 text-xs sm:text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">تنزيل PDF</button>
+                <button type="button" onclick="downloadCurrentStudentExcel()" class="px-3 py-2 text-xs sm:text-sm bg-white/15 hover:bg-white/25 text-white rounded-lg transition border border-white/20">Excel الحالي</button>
+                <input id="excelImportInput" type="file" accept=".xlsx,.xls,.csv" hidden onchange="importExcelStudents(event)">
+                <button type="button" onclick="printForm()" class="px-3 py-2 text-xs sm:text-sm bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg transition shadow-md flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    <span>طباعة / PDF</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- تنبيه حالة الحفظ التلقائي على الجهاز -->
+    <div id="toastBanner" class="no-print fixed bottom-4 left-4 z-50 bg-slate-900 text-white text-xs sm:text-sm px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center gap-2.5 hidden">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="toastMessage">تم نسخ كود Google Apps Script</span>
+    </div>
+
+    <!-- مربع تأكيد مسح البيانات -->
+    <div id="resetModal" class="no-print fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
+            <h3 class="text-lg font-bold text-slate-900 mb-2">تأكيد مسح جميع البيانات</h3>
+            <p class="text-sm text-slate-600 mb-6">هل أنت متأكد من رغبتك في تفريغ كافة الحقول وإزالة الصورة الشخصية؟</p>
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="closeResetModal()" class="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg">إلغاء</button>
+                <button type="button" onclick="executeReset()" class="px-4 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg">نعم، امسح الكل</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة إعدادات الربط مع Google Sheets وواتساب وكود Apps Script -->
+    <div id="setupModal" class="no-print fixed inset-0 bg-slate-900/70 backdrop-blur-sm items-center justify-center z-50 p-4 flex">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto custom-scrollbar space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+                <h3 class="text-lg font-bold text-sky-900">إعدادات استلام وحفظ بيانات أولياء الأمور</h3>
+                <button type="button" onclick="closeSetupModal()" class="text-slate-400 hover:text-slate-700 font-bold text-lg">✕</button>
+            </div>
+
+            <div class="bg-sky-50 border border-sky-200 rounded-xl p-3.5 text-xs text-sky-950 space-y-1.5 leading-relaxed">
+                <p class="font-bold text-sm">كيف تعمل هذه الصفحة عند نشرها لأولياء الأمور؟</p>
+                <p>1. <strong>الحفظ التلقائي في Google Sheets (موصى به):</strong> عند وضع رابط <em>Google Apps Script</em>، يقوم زر <strong>"إرسال وحفظ البيانات"</strong> بترحيل جميع حقول الطالب مباشرة إلى جدول Excel/Sheets منظم لديك.</p>
+                <p>2. <strong>الإرسال الفوري عبر واتساب + تحميل ملف CSV/Excel:</strong> حتى بدون أي ربط خارجي، يستطيع ولي الأمر إرسال ملخص مرتب عبر واتساب بضغطة زر أو تنزيل ملف جدول بيانات (CSV) جاهز لإرساله لك.</p>
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">1. رابط Google Apps Script Web App (للحفظ التلقائي في Google Sheets):</label>
+                    <input type="url" id="cfgScriptUrl" placeholder="https://script.google.com/macros/s/XXXXX/exec" dir="ltr" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">2. رقم واتساب المدرسة / الأستاذ (بصيغة دولية بدون + مثل 9647700000000):</label>
+                    <input type="text" id="cfgWhatsapp" placeholder="9647701234567" dir="ltr" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                </div>
+                <div class="flex flex-wrap gap-2 pt-1">
+                    <button type="button" onclick="saveRuntimeConfig()" class="px-4 py-2 bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold rounded-lg">حفظ في هذا المتصفح</button>
+                    <button type="button" onclick="downloadConfiguredHtml()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg">تنزيل نسخة HTML مدمجة بالإعدادات لرفعها على Netlify</button>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-200 pt-3 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-800">كود Google Apps Script (انسخه والصقه في Extensions &gt; Apps Script داخل جدول Google Sheets):</span>
+                    <button type="button" onclick="copyAppsScriptCode()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-white text-xs rounded-md">نسخ الكود</button>
+                </div>
+                <pre id="appsScriptSnippet" dir="ltr" class="bg-slate-900 text-emerald-300 p-3 rounded-xl text-[11px] overflow-x-auto leading-relaxed">function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = JSON.parse(e.postData.contents);
+  var headers = [
+    "تاريخ الإرسال", "العام الدراسي", "الاسم", "اسم الأب", "اسم والد الأب", "اسم جد الأب", "اللقب",
+    "تاريخ التولد", "اسم الأم", "اسم والد الأم", "اسم جد الأم", "نوع الهوية",
+    "رقم الموحدة / الجنسية", "بلد الإصدار", "السجل", "الصحيفة", "الرقم الإحصائي",
+    "الجنس", "الجنسية", "دولة التولد", "مسقط الرأس", "اللغة الأم", "فئة الدم",
+    "الديانة", "رقم الهاتف", "لغة الدرس", "الاحتياجات الخاصة", "المستوى المعيشي",
+    "منحة الرعاية", "الصف الدراسي", "الشعبة", "المدينة / القرية", "الحي",
+    "المحلة", "الزقاق", "عنوان 1", "عنوان 2", "أقرب نقطة دالة", "البريد الإلكتروني",
+    "اسم المنظم", "اسم ولي الأمر"
+  ];
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(headers);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
+  }
+  sheet.appendRow([
+    new Date(), data.academic_year, data.first_name, data.father_name, data.grandfather_name,
+    data.great_grandfather_name, data.surname, data.dob, data.mother_name,
+    data.mother_father_name, data.mother_grandfather_name, data.id_type_label,
+    data.id_number, data.issue_country, data.record, data.page, data.stat_number,
+    data.gender_label, data.nationality, data.birth_country, data.birth_place,
+    data.mother_tongue, data.blood_type, data.religion, data.phone, data.study_lang,
+    data.special_needs_label, data.living_level_label, data.welfare_label, data.grade,
+    data.section, data.city, data.neighborhood, data.mahalla, data.zuqaq,
+    data.address1, data.address2, data.landmark, data.email, data.organizer, data.guardian
+  ]);
+  return ContentService.createTextOutput(JSON.stringify({status: "success"}))
+    .setMimeType(ContentService.MimeType.JSON);
+}</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة نجاح الإرسال وخيارات التسليم المنظم لولي الأمر -->
+    <div id="submitResultModal" class="no-print fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                    <div id="resultIconBox" class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xl">✓</div>
+                    <div>
+                        <h3 id="resultTitle" class="text-base sm:text-lg font-bold text-slate-900">تم تجهيز بيانات الطالب بنجاح</h3>
+                        <p id="resultSubtitle" class="text-xs text-slate-600">اختر طريقة التسليم أو الاحتفاظ بنسخة منظمة:</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeSubmitModal()" class="text-slate-400 hover:text-slate-700 font-bold text-lg">✕</button>
+            </div>
+
+            <div id="cloudStatusBox" class="p-3 rounded-xl text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200"></div>
+
+            <!-- ملخص منظم جاهز للنسخ -->
+            <div>
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-bold text-slate-700">ملخص البيانات المنسق:</span>
+                    <button type="button" onclick="copySummaryText()" class="text-xs font-bold text-sky-700 hover:underline">نسخ النص كاملاً</button>
+                </div>
+                <textarea id="formattedSummaryBox" rows="7" readonly="" class="w-full p-3 text-xs bg-slate-50 border border-slate-300 rounded-xl font-sans leading-relaxed text-slate-800"></textarea>
+            </div>
+
+            <!-- أزرار التسليم المنظم -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                <button type="button" onclick="sendViaWhatsApp()" class="px-3 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm flex items-center justify-center gap-1.5">
+                    <span>إرسال عبر واتساب</span>
+                </button>
+                <button type="button" onclick="downloadStudentCSV()" class="px-3 py-2.5 bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold rounded-xl shadow-sm flex items-center justify-center gap-1.5">
+                    <span>تنزيل ملف Excel (CSV)</span>
+                </button>
+                <button type="button" onclick="closeSubmitModal(); printForm();" class="px-3 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl shadow-sm flex items-center justify-center gap-1.5">
+                    <span>حفظ كـ PDF / طباعة</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+<div id="recordsModal" class="emis-modal no-print" onclick="if(event.target===this)closeRecordsModal()"><div class="emis-modal-card" dir="rtl">
+<div class="flex items-center justify-between gap-3 mb-4"><div><h2 class="text-lg font-extrabold text-slate-900">سجل الطلاب المستوردين</h2><p id="recordsCount" class="text-xs text-slate-500 mt-1">لا توجد سجلات بعد</p></div><button type="button" onclick="closeRecordsModal()" class="emis-action secondary">إغلاق ✕</button></div>
+<div class="emis-hint mb-3">ارفع ملف Excel يحتوي صفاً للعناوين وصفاً لكل طالب. اختر أي طالب لتحميل بياناته إلى الاستمارة، أو صدّر جميع السجلات إلى Excel. تُحفظ السجلات على هذا المتصفح فقط.</div>
+<div class="flex flex-wrap gap-2 mb-3"><button class="emis-action" onclick="document.getElementById('excelImportInput').click()">＋ استيراد ملف</button><button class="emis-action secondary" onclick="exportAllStudentsExcel()">تنزيل جميع الطلاب Excel</button><button class="emis-action secondary" onclick="downloadExcelTemplate()">تحميل قالب Excel</button><button class="emis-action secondary" onclick="clearImportedStudents()">مسح السجل</button></div>
+<div id="recordsTableHost" class="emis-table-wrap"></div></div></div>
+    <!-- الحاوية الرئيسية المقسمة: لوحة الإدخال + المعاينة الحية -->
+    <main class="main-container max-w-screen-2xl mx-auto p-4 lg:p-6 grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+
+        <!-- =========================================================
+             الجانب الأيمن: لوحة إدخال البيانات (تختفي عند الطباعة)
+             ========================================================= -->
+        <section class="no-print xl:col-span-5 bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden xl:sticky xl:top-20">
+            <div class="bg-slate-50 border-b border-slate-200 px-5 py-3.5 flex items-center justify-between">
+                <h2 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-sky-600"></span>
+                    لوحة إدخال بيانات الطالب / التلميذ
+                </h2>
+                <span class="text-xs text-rose-600 font-semibold">* الحقول الإجبارية</span>
+            </div>
+
+            <form id="emisInputForm" onsubmit="handleFormSubmit(event)" class="p-5 space-y-6 max-h-[calc(100vh-140px)] overflow-y-auto custom-scrollbar">
+
+                <!-- إعدادات الترويسة والصورة -->
+                <div class="bg-sky-50/70 p-4 rounded-xl border border-sky-100 space-y-4">
+                    <h3 class="font-bold text-sky-900 text-sm border-b border-sky-200 pb-2">الترويسة والصورة الشخصية</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">العام الدراسي</label>
+                            <input type="text" name="academic_year" data-target="out_academic_year" value="2026-2027" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">صورة الطالب الشخصية</label>
+                            <div class="flex items-center gap-2">
+                                <label class="flex-1 cursor-pointer bg-white border border-dashed border-sky-400 hover:bg-sky-50 text-sky-700 text-xs font-bold py-2 px-3 rounded-lg text-center transition">
+                                    <span>اختر صورة...</span>
+                                    <input type="file" id="photoInput" accept="image/*" class="hidden">
+                                </label>
+                                <button type="button" onclick="removePhoto()" id="removePhotoBtn" class="hidden px-2.5 py-2 bg-rose-100 text-rose-700 hover:bg-rose-200 rounded-lg text-xs font-bold" title="حذف الصورة">✕</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- أولا: معلومات الاسم والنسب -->
+                <div class="space-y-3">
+                    <h3 class="font-bold text-white bg-sky-700 px-3 py-1.5 rounded-lg text-sm">أولاً : معلومات الاسم والنسب</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">الاسم <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="first_name" data-target="out_first_name" placeholder="مثال: علي" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">اسم الأب <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="father_name" data-target="out_father_name" placeholder="مثال: محمد" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">اسم والد الأب <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="grandfather_name" data-target="out_grandfather_name" placeholder="مثال: حسن" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">اسم جد الأب <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="great_grandfather_name" data-target="out_great_grandfather_name" placeholder="مثال: حسين" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">اللقب <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="surname" data-target="out_surname" placeholder="اللقب" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">تاريخ التولد <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="dob" data-target="out_dob" placeholder="YYYY/MM/DD" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">اسم الأم <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="mother_name" data-target="out_mother_name" placeholder="اسم الأم" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">اسم والد الأم <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="mother_father_name" data-target="out_mother_father_name" placeholder="والد الأم" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">اسم جد الأم <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="mother_grandfather_name" data-target="out_mother_grandfather_name" placeholder="جد الأم" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ثانيا: وثيقة التعريف والبيانات الشخصية -->
+                <div class="space-y-3">
+                    <h3 class="font-bold text-white bg-sky-700 px-3 py-1.5 rounded-lg text-sm">ثانياً : وثيقة التعريف والبيانات الشخصية</h3>
+                    
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">نوع الهوية <span class="text-rose-600">*</span></label>
+                        <div class="flex flex-wrap gap-4 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                            <label class="inline-flex items-center gap-2 text-xs font-bold cursor-pointer">
+                                <input type="radio" required="" name="id_type" value="unified" data-label="بطاقة موحدة" onchange="updateRadioGroup('id_type', ['chk_id_unified', 'chk_id_nationality', 'chk_id_other'])" class="text-sky-600 focus:ring-sky-500">
+                                <span>بطاقة موحدة</span>
+                            </label>
+                            <label class="inline-flex items-center gap-2 text-xs font-bold cursor-pointer">
+                                <input type="radio" name="id_type" value="nationality" data-label="جنسية عراقية" onchange="updateRadioGroup('id_type', ['chk_id_unified', 'chk_id_nationality', 'chk_id_other'])" class="text-sky-600 focus:ring-sky-500">
+                                <span>جنسية عراقية</span>
+                            </label>
+                            <label class="inline-flex items-center gap-2 text-xs font-bold cursor-pointer">
+                                <input type="radio" name="id_type" value="other" data-label="أخرى" onchange="updateRadioGroup('id_type', ['chk_id_unified', 'chk_id_nationality', 'chk_id_other'])" class="text-sky-600 focus:ring-sky-500">
+                                <span>أخرى</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">رقم الموحدة / الجنسية <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="id_number" data-target="out_id_number" placeholder="أدخل الرقم" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">بلد الإصدار <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="issue_country" data-target="out_issue_country" placeholder="مثال: العراق" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">السجل</label>
+                            <input type="text" name="record" data-target="out_record" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">الصحيفة</label>
+                            <input type="text" name="page" data-target="out_page" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">الرقم الإحصائي</label>
+                            <input type="text" name="stat_number" data-target="out_stat_number" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">الجنس <span class="text-rose-600">*</span></label>
+                            <div class="flex gap-4 bg-slate-50 p-2 rounded-lg border border-slate-200">
+                                <label class="inline-flex items-center gap-1.5 text-xs font-bold cursor-pointer">
+                                    <input type="radio" required="" name="gender" value="male" data-label="ذكر" onchange="updateRadioGroup('gender', ['chk_gender_male', 'chk_gender_female'])" class="text-sky-600">
+                                    <span>ذكر</span>
+                                </label>
+                                <label class="inline-flex items-center gap-1.5 text-xs font-bold cursor-pointer">
+                                    <input type="radio" name="gender" value="female" data-label="أنثى" onchange="updateRadioGroup('gender', ['chk_gender_male', 'chk_gender_female'])" class="text-sky-600">
+                                    <span>أنثى</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">الجنسية <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="nationality" data-target="out_nationality" placeholder="عراقي" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">دولة التولد</label>
+                            <input type="text" name="birth_country" data-target="out_birth_country" placeholder="العراق" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">مسقط الرأس</label>
+                            <input type="text" name="birth_place" data-target="out_birth_place" placeholder="المحافظة / القضاء" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">اللغة الأم <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="mother_tongue" data-target="out_mother_tongue" placeholder="العربية" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">فئة الدم</label>
+                            <select name="blood_type" data-target="out_blood_type" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 bg-white">
+                                <option value="">اختر الفئة...</option>
+                                <option value="A+">A+</option>
+                                <option value="A-">A-</option>
+                                <option value="B+">B+</option>
+                                <option value="B-">B-</option>
+                                <option value="AB+">AB+</option>
+                                <option value="AB-">AB-</option>
+                                <option value="O+">O+</option>
+                                <option value="O-">O-</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">الديانة <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="religion" data-target="out_religion" placeholder="مسلم" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">رقم الهاتف <span class="text-rose-600">*</span></label>
+                            <input type="tel" required="" name="phone" data-target="out_phone" placeholder="07XXXXXXXXX" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">لغة الدرس <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="study_lang" data-target="out_study_lang" placeholder="العربية" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ثالثا: الحالة الاجتماعية والمعيشية والدراسية -->
+                <div class="space-y-3">
+                    <h3 class="font-bold text-white bg-sky-700 px-3 py-1.5 rounded-lg text-sm">ثالثاً : الحالة الاجتماعية والمعيشية والدراسية</h3>
+                    
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">الاحتياجات الخاصة (إن وجد):</label>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <label class="inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                                <input type="checkbox" name="special_needs" value="العوق الفيزيائي" onchange="toggleCheckbox('chk_sn_physical', this.checked)" class="rounded text-sky-600">
+                                <span>العوق الفيزيائي</span>
+                            </label>
+                            <label class="inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                                <input type="checkbox" name="special_needs" value="العوق البصري" onchange="toggleCheckbox('chk_sn_visual', this.checked)" class="rounded text-sky-600">
+                                <span>العوق البصري</span>
+                            </label>
+                            <label class="inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                                <input type="checkbox" name="special_needs" value="العوق السمعي" onchange="toggleCheckbox('chk_sn_hearing', this.checked)" class="rounded text-sky-600">
+                                <span>العوق السمعي</span>
+                            </label>
+                            <label class="inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                                <input type="checkbox" name="special_needs" value="العوق الذهني" onchange="toggleCheckbox('chk_sn_mental', this.checked)" class="rounded text-sky-600">
+                                <span>العوق الذهني</span>
+                            </label>
+                            <label class="inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                                <input type="checkbox" name="special_needs" value="العوق النفسي" onchange="toggleCheckbox('chk_sn_psych', this.checked)" class="rounded text-sky-600">
+                                <span>العوق النفسي</span>
+                            </label>
+                            <label class="inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                                <input type="checkbox" name="special_needs" value="التوحد" onchange="toggleCheckbox('chk_sn_autism', this.checked)" class="rounded text-sky-600">
+                                <span>التوحد</span>
+                            </label>
+                            <label class="inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                                <input type="checkbox" name="special_needs" value="بطئ التعلم" onchange="toggleCheckbox('chk_sn_slow', this.checked)" class="rounded text-sky-600">
+                                <span>بطئ التعلم</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">المستوى المعيشي <span class="text-rose-600">*</span></label>
+                        <div class="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <label class="inline-flex items-center gap-1.5 text-xs font-bold cursor-pointer">
+                                <input type="radio" required="" name="living_level" value="sub_zero" data-label="الطبقة تحت الصفر" onchange="updateRadioGroup('living_level', ['chk_lvl_subzero', 'chk_lvl_poor', 'chk_lvl_middle', 'chk_lvl_high'])" class="text-sky-600">
+                                <span>الطبقة تحت الصفر</span>
+                            </label>
+                            <label class="inline-flex items-center gap-1.5 text-xs font-bold cursor-pointer">
+                                <input type="radio" name="living_level" value="poor" data-label="الطبقة الفقيرة" onchange="updateRadioGroup('living_level', ['chk_lvl_subzero', 'chk_lvl_poor', 'chk_lvl_middle', 'chk_lvl_high'])" class="text-sky-600">
+                                <span>الطبقة الفقيرة</span>
+                            </label>
+                            <label class="inline-flex items-center gap-1.5 text-xs font-bold cursor-pointer">
+                                <input type="radio" name="living_level" value="middle" data-label="الطبقة الوسطى" onchange="updateRadioGroup('living_level', ['chk_lvl_subzero', 'chk_lvl_poor', 'chk_lvl_middle', 'chk_lvl_high'])" class="text-sky-600">
+                                <span>الطبقة الوسطى</span>
+                            </label>
+                            <label class="inline-flex items-center gap-1.5 text-xs font-bold cursor-pointer">
+                                <input type="radio" name="living_level" value="high" data-label="الطبقة العليا" onchange="updateRadioGroup('living_level', ['chk_lvl_subzero', 'chk_lvl_poor', 'chk_lvl_middle', 'chk_lvl_high'])" class="text-sky-600">
+                                <span>الطبقة العليا</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">منحة الرعاية الاجتماعية <span class="text-rose-600">*</span></label>
+                            <div class="flex gap-4 bg-slate-50 p-2 rounded-lg border border-slate-200">
+                                <label class="inline-flex items-center gap-1.5 text-xs font-bold cursor-pointer">
+                                    <input type="radio" required="" name="welfare" value="yes" data-label="نعم" onchange="updateRadioGroup('welfare', ['chk_welfare_yes', 'chk_welfare_no'])" class="text-sky-600">
+                                    <span>نعم</span>
+                                </label>
+                                <label class="inline-flex items-center gap-1.5 text-xs font-bold cursor-pointer">
+                                    <input type="radio" name="welfare" value="no" data-label="لا" onchange="updateRadioGroup('welfare', ['chk_welfare_yes', 'chk_welfare_no'])" class="text-sky-600">
+                                    <span>لا</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">الصف الدراسي <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="grade" data-target="out_grade" placeholder="مثال: الرابع العلمي" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">الشعبة <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="section" data-target="out_section" placeholder="مثال: أ" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- رابعا: معلومات المكان والسكن -->
+                <div class="space-y-3">
+                    <h3 class="font-bold text-white bg-sky-700 px-3 py-1.5 rounded-lg text-sm">رابعاً : معلومات المكان والسكن</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">المدينة / القرية <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="city" data-target="out_city" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">الحي <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="neighborhood" data-target="out_neighborhood" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">المحلة <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="mahalla" data-target="out_mahalla" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">الزقاق <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="zuqaq" data-target="out_zuqaq" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">عنوان ١</label>
+                            <input type="text" name="address1" data-target="out_address1" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">عنوان ٢</label>
+                            <input type="text" name="address2" data-target="out_address2" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">أقرب نقطة دالة <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="landmark" data-target="out_landmark" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">البريد الإلكتروني</label>
+                            <input type="email" name="email" data-target="out_email" placeholder="example@mail.com" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- التذييل والتوقيعات -->
+                <div class="space-y-3 pt-2 border-t border-slate-200">
+                    <h3 class="font-bold text-slate-800 text-sm">بيانات التذييل والتسجيل</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="flex items-center">
+                            <label class="inline-flex items-center gap-2 text-xs font-bold cursor-pointer bg-slate-50 px-3 py-2.5 rounded-lg border border-slate-200 w-full">
+                                <input type="checkbox" name="registered" onchange="toggleCheckbox('chk_registered', this.checked)" class="rounded text-sky-600">
+                                <span>تم تسجيله في النظام</span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">اسم المنظم</label>
+                            <input type="text" name="organizer" data-target="out_organizer" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">اسم ولي الأمر <span class="text-rose-600">*</span></label>
+                            <input type="text" required="" name="guardian" data-target="out_guardian" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- أزرار الإرسال والحفظ المنظم أسفل الاستمارة -->
+                <div class="pt-4 border-t border-slate-200 space-y-2.5">
+                    <button type="submit" id="submitBtn" class="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm sm:text-base rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span>إرسال وحفظ بيانات الطالب</span>
+                    </button>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="downloadStudentCSV()" class="py-2 px-3 bg-sky-100 hover:bg-sky-200 text-sky-900 font-bold text-xs rounded-lg transition flex items-center justify-center gap-1.5">
+                            <span>تنزيل ملف Excel (CSV)</span>
+                        </button>
+                        <button type="button" onclick="prepareAndOpenSummary()" class="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-lg transition flex items-center justify-center gap-1.5">
+                            <span>تجهيز ملخص للإرسال</span>
+                        </button>
+                    </div>
+                </div>
+
+            </form>
+        </section>
+
+        <!-- =========================================================
+             الجانب الأيسر: المعاينة الحية المطابقة للاستمارة (ورقة A4)
+             ========================================================= -->
+        <section class="xl:col-span-7 preview-wrapper flex flex-col items-center">
+            <div class="no-print mb-2 flex items-center justify-between w-full max-w-[210mm] text-xs text-slate-500 px-1">
+                <span>معاينة حية بمقاس ورقة A4 القياسية (210mm × 297mm)</span>
+                <span class="font-semibold text-sky-700">تتحدث تلقائياً أثناء الكتابة</span>
+            </div>
+
+            <!-- ورقة الاستمارة الرسمية A4 -->
+            <div class="a4-sheet" id="printableArea">
+                <div class="outer-ornate-border">
+                    <div class="corner-box corner-tl"></div>
+                    <div class="corner-box corner-tr"></div>
+                    <div class="corner-box corner-bl"></div>
+                    <div class="corner-box corner-br"></div>
+
+                    <div class="inner-ornate-border">
+                        <div>
+                            <!-- الترويسة (Header) -->
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="text-right pt-1 space-y-1">
+                                    <div class="text-[15px] font-extrabold text-black leading-snug">
+                                        جمهورية العراق – وزارة التربية
+                                    </div>
+                                    <div class="text-[15px] font-extrabold text-black leading-snug">
+                                        استمارة معلومات الطلاب والتلاميذ لنظام <span dir="ltr" class="font-sans font-extrabold">EMIS</span>
+                                    </div>
+                                    <div class="text-[15px] font-extrabold text-black pt-1">
+                                        العام الدراسي <span id="out_academic_year" dir="ltr" class="font-sans">2026-2027</span>
+                                    </div>
+                                </div>
+
+                                <div class="pl-4">
+                                    <div class="photo-box" id="photoContainer">
+                                        <span id="photoPlaceholder" class="text-[11px] font-bold text-slate-700 leading-tight px-2">
+                                            صورة<br>الطالب
+                                        </span>
+                                        <img id="out_photo" src="" alt="صورة الطالب" class="hidden">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="border-t-[2.5px] border-black my-2">
+
+                            <!-- أولا : معلومات الاسم والنسب -->
+                            <div class="section-banner">اولا : معلومات الاسم والنسب</div>
+
+                            <div class="px-1 pt-1 space-y-1.5">
+                                <div class="field-row">
+                                    <div class="field-group w-[23%]">
+                                        <span class="field-label">الاسم*:</span>
+                                        <span id="out_first_name" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[25%]">
+                                        <span class="field-label">اسم الاب*:</span>
+                                        <span id="out_father_name" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[26%]">
+                                        <span class="field-label">اسم والد الاب* :</span>
+                                        <span id="out_grandfather_name" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[26%] pl-0">
+                                        <span class="field-label">اسم جد الاب* :</span>
+                                        <span id="out_great_grandfather_name" class="dotted-value"></span>
+                                    </div>
+                                </div>
+
+                                <div class="field-row">
+                                    <div class="field-group w-[23%]">
+                                        <span class="field-label">اللقب* :</span>
+                                        <span id="out_surname" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[25%]">
+                                        <span class="field-label">اسم الام* :</span>
+                                        <span id="out_mother_name" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[26%]">
+                                        <span class="field-label">اسم والد الام * :</span>
+                                        <span id="out_mother_father_name" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[26%] pl-0">
+                                        <span class="field-label">اسم جد الام * :</span>
+                                        <span id="out_mother_grandfather_name" class="dotted-value"></span>
+                                    </div>
+                                </div>
+
+                                <div class="field-row">
+                                    <div class="field-group w-[35%]">
+                                        <span class="field-label">تاريخ التولد* :</span>
+                                        <span id="out_dob" class="dotted-value" dir="ltr"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ثانيا : وثيقة التعريف والبيانات الشخصية -->
+                            <div class="section-banner mt-2">ثانيا : وثيقة التعريف والبيانات الشخصية</div>
+
+                            <div class="px-1 pt-1 space-y-2">
+                                <div class="field-row gap-6">
+                                    <span class="field-label">نوع الهوية *:</span>
+                                    <div class="inline-flex items-center">
+                                        <span id="chk_id_unified" class="form-checkbox"></span>
+                                        <span>بطاقة موحدة</span>
+                                    </div>
+                                    <div class="inline-flex items-center">
+                                        <span id="chk_id_nationality" class="form-checkbox"></span>
+                                        <span>جنسية عراقية</span>
+                                    </div>
+                                    <div class="inline-flex items-center">
+                                        <span id="chk_id_other" class="form-checkbox"></span>
+                                        <span>أخرى</span>
+                                    </div>
+                                </div>
+
+                                <div class="field-row">
+                                    <div class="field-group w-[52%]">
+                                        <span class="field-label">رقم الموحدة / الجنسية *:</span>
+                                        <span id="out_id_number" class="dotted-value" dir="ltr"></span>
+                                    </div>
+                                    <div class="field-group w-[48%] pl-0">
+                                        <span class="field-label">بلد الإصدار * :</span>
+                                        <span id="out_issue_country" class="dotted-value"></span>
+                                    </div>
+                                </div>
+
+                                <div class="field-row">
+                                    <div class="field-group w-[33%]">
+                                        <span class="field-label">السجل :</span>
+                                        <span id="out_record" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[33%]">
+                                        <span class="field-label">الصحيفة :</span>
+                                        <span id="out_page" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[34%] pl-0">
+                                        <span class="field-label">الرقم الاحصائي :</span>
+                                        <span id="out_stat_number" class="dotted-value"></span>
+                                    </div>
+                                </div>
+
+                                <div class="field-row">
+                                    <div class="field-group w-[32%] gap-2">
+                                        <span class="field-label">الجنس*:</span>
+                                        <div class="inline-flex items-center">
+                                            <span id="chk_gender_male" class="form-checkbox"></span>
+                                            <span>ذكر</span>
+                                        </div>
+                                        <div class="inline-flex items-center">
+                                            <span id="chk_gender_female" class="form-checkbox"></span>
+                                            <span>انثى</span>
+                                        </div>
+                                    </div>
+                                    <div class="field-group w-[34%]">
+                                        <span class="field-label">الجنسية * :</span>
+                                        <span id="out_nationality" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[34%] pl-0">
+                                        <span class="field-label">دولة التولد :</span>
+                                        <span id="out_birth_country" class="dotted-value"></span>
+                                    </div>
+                                </div>
+
+                                <div class="field-row">
+                                    <div class="field-group w-[35%]">
+                                        <span class="field-label">مسقط الرأس :</span>
+                                        <span id="out_birth_place" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[35%]">
+                                        <span class="field-label">اللغة الام* :</span>
+                                        <span id="out_mother_tongue" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[30%] pl-0">
+                                        <span class="field-label">فئة الدم :</span>
+                                        <span id="out_blood_type" class="dotted-value" dir="ltr"></span>
+                                    </div>
+                                </div>
+
+                                <div class="field-row">
+                                    <div class="field-group w-[32%]">
+                                        <span class="field-label">الديانة * :</span>
+                                        <span id="out_religion" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[36%]">
+                                        <span class="field-label">رقم الهاتف * :</span>
+                                        <span id="out_phone" class="dotted-value" dir="ltr"></span>
+                                    </div>
+                                    <div class="field-group w-[32%] pl-0">
+                                        <span class="field-label">لغة الدرس * :</span>
+                                        <span id="out_study_lang" class="dotted-value"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ثالثا : الحالة الاجتماعية والمعيشية والدراسية -->
+                            <div class="section-banner mt-2">ثالثا : الحالة الاجتماعية والمعيشية والدراسية</div>
+
+                            <div class="px-1 pt-1 space-y-2">
+                                <div class="text-[12.5px] font-bold">الاحتياجات الخاصة (ان وجد ):</div>
+                                <div class="field-row flex-wrap justify-between text-[12px] pr-1">
+                                    <div class="inline-flex items-center">
+                                        <span id="chk_sn_physical" class="form-checkbox"></span>
+                                        <span>العوق الفيزيائي</span>
+                                    </div>
+                                    <div class="inline-flex items-center">
+                                        <span id="chk_sn_visual" class="form-checkbox"></span>
+                                        <span>العوق البصري</span>
+                                    </div>
+                                    <div class="inline-flex items-center">
+                                        <span id="chk_sn_hearing" class="form-checkbox"></span>
+                                        <span>العوق السمعي</span>
+                                    </div>
+                                    <div class="inline-flex items-center">
+                                        <span id="chk_sn_mental" class="form-checkbox"></span>
+                                        <span>العوق الذهني</span>
+                                    </div>
+                                    <div class="inline-flex items-center">
+                                        <span id="chk_sn_psych" class="form-checkbox"></span>
+                                        <span>العوق النفسي</span>
+                                    </div>
+                                    <div class="inline-flex items-center">
+                                        <span id="chk_sn_autism" class="form-checkbox"></span>
+                                        <span>التوحد</span>
+                                    </div>
+                                    <div class="inline-flex items-center">
+                                        <span id="chk_sn_slow" class="form-checkbox"></span>
+                                        <span>بطئ التعلم</span>
+                                    </div>
+                                </div>
+
+                                <div class="field-row justify-between text-[12.5px]">
+                                    <span class="field-label">المستوى المعيشي *:</span>
+                                    <div class="inline-flex items-center">
+                                        <span id="chk_lvl_subzero" class="form-checkbox"></span>
+                                        <span>الطبقة تحت الصفر</span>
+                                    </div>
+                                    <div class="inline-flex items-center">
+                                        <span id="chk_lvl_poor" class="form-checkbox"></span>
+                                        <span>الطبقة الفقيرة</span>
+                                    </div>
+                                    <div class="inline-flex items-center">
+                                        <span id="chk_lvl_middle" class="form-checkbox"></span>
+                                        <span>الطبقة الوسطى</span>
+                                    </div>
+                                    <div class="inline-flex items-center">
+                                        <span id="chk_lvl_high" class="form-checkbox"></span>
+                                        <span>الطبقة العليا</span>
+                                    </div>
+                                </div>
+
+                                <div class="field-row">
+                                    <div class="field-group w-[45%] gap-3">
+                                        <span class="field-label">مشمول بمنحة الرعاية الاجتماعية * :</span>
+                                        <div class="inline-flex items-center">
+                                            <span id="chk_welfare_yes" class="form-checkbox"></span>
+                                            <span>نعم</span>
+                                        </div>
+                                        <div class="inline-flex items-center">
+                                            <span id="chk_welfare_no" class="form-checkbox"></span>
+                                            <span>لا</span>
+                                        </div>
+                                    </div>
+                                    <div class="field-group w-[33%]">
+                                        <span class="field-label">الصف الدراسي *:</span>
+                                        <span id="out_grade" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[22%] pl-0">
+                                        <span class="field-label">الشعبة *:</span>
+                                        <span id="out_section" class="dotted-value"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- رابعا : معلومات المكان والسكن -->
+                            <div class="section-banner mt-2">رابعا : معلومات المكان والسكن</div>
+
+                            <div class="px-1 pt-1 space-y-2">
+                                <div class="field-row">
+                                    <div class="field-group w-[34%]">
+                                        <span class="field-label">المدينة/ القرية *:</span>
+                                        <span id="out_city" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[33%]">
+                                        <span class="field-label">الحي* :</span>
+                                        <span id="out_neighborhood" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[33%] pl-0">
+                                        <span class="field-label">المحلة* :</span>
+                                        <span id="out_mahalla" class="dotted-value"></span>
+                                    </div>
+                                </div>
+
+                                <div class="field-row">
+                                    <div class="field-group w-[34%]">
+                                        <span class="field-label">الزقاق* :</span>
+                                        <span id="out_zuqaq" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[33%]">
+                                        <span class="field-label">عنوان ١ :</span>
+                                        <span id="out_address1" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[33%] pl-0">
+                                        <span class="field-label">عنوان ٢ :</span>
+                                        <span id="out_address2" class="dotted-value"></span>
+                                    </div>
+                                </div>
+
+                                <div class="field-row">
+                                    <div class="field-group w-[50%]">
+                                        <span class="field-label">اقرب نقطة دالة * :</span>
+                                        <span id="out_landmark" class="dotted-value"></span>
+                                    </div>
+                                    <div class="field-group w-[50%] pl-0">
+                                        <span class="field-label">البريد الالكتروني :</span>
+                                        <span id="out_email" class="dotted-value" dir="ltr"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- التذييل والملاحظة الحمراء والتوقيعات -->
+                        <div class="px-1 pt-1 pb-2">
+                            <div class="text-[12.5px] font-bold text-red-600 mb-3">
+                                ملاحظة : الحقول المصحوبة بنجمة (*) إجبارية لإدخال البيانات في نظام <span dir="ltr" class="font-sans">EMIS</span>
+                            </div>
+
+                            <div class="field-row items-center">
+                                <div class="field-group w-[22%]">
+                                    <span class="field-label">تم تسجيله</span>
+                                    <span class="inline-flex items-center font-extrabold mx-1">
+                                        [ <span id="chk_registered" class="inline-block w-3 text-center text-sky-900"></span> ] :
+                                    </span>
+                                </div>
+                                <div class="field-group w-[35%]">
+                                    <span class="field-label">اسم المنظم :</span>
+                                    <span id="out_organizer" class="dotted-value"></span>
+                                </div>
+                                <div class="field-group w-[43%] pl-0">
+                                    <span class="field-label">اسم ولي الامر والتوقيع :</span>
+                                    <span id="out_guardian" class="dotted-value"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- =========================================================
+         المنطق البرمجي (JavaScript) للربط الفوري والحفظ والإرسال المنظم
+         ========================================================= -->
+    <script>
+
+        const STORAGE_DRAFT_KEY = 'emis_student_form_draft_v1';
+        const STORAGE_CFG_KEY = 'emis_runtime_config_v1';
+
+        function getEffectiveConfig() {
+            let saved = {};
+            try {
+                saved = JSON.parse(localStorage.getItem(STORAGE_CFG_KEY) || '{}');
+            } catch (e) {}
+            return {
+                GOOGLE_SCRIPT_URL: (APP_CONFIG.GOOGLE_SCRIPT_URL || saved.GOOGLE_SCRIPT_URL || '').trim(),
+                SCHOOL_WHATSAPP: (APP_CONFIG.SCHOOL_WHATSAPP || saved.SCHOOL_WHATSAPP || '').trim(),
+                SCHOOL_NAME: APP_CONFIG.SCHOOL_NAME || 'إدارة المدرسة'
+            };
+        }
+
+        let toastTimer = null;
+        function showToast(msg) {
+            const banner = document.getElementById('toastBanner');
+            const text = document.getElementById('toastMessage');
+            text.textContent = msg;
+            banner.classList.remove('hidden');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => banner.classList.add('hidden'), 2800);
+        }
+
+        // ربط جميع حقول النصوص والقوائم المنسدلة بالاستمارة في الوقت الفعلي + الحفظ التلقائي للمسودة
+        document.querySelectorAll('[data-target]').forEach(input => {
+            const targetId = input.getAttribute('data-target');
+            const targetElement = document.getElementById(targetId);
+
+            if (targetElement) {
+                const updateValue = () => {
+                    targetElement.textContent = input.value.trim();
+                    saveDraftToLocal();
+                };
+                input.addEventListener('input', updateValue);
+                input.addEventListener('change', updateValue);
+            }
+        });
+
+        function updateRadioGroup(groupName, checkboxIds) {
+            const radios = document.getElementsByName(groupName);
+            radios.forEach((radio, index) => {
+                const box = document.getElementById(checkboxIds[index]);
+                if (box) {
+                    box.textContent = radio.checked ? '✓' : '';
+                }
+            });
+            saveDraftToLocal();
+        }
+
+        function toggleCheckbox(targetBoxId, isChecked) {
+            const box = document.getElementById(targetBoxId);
+            if (box) {
+                box.textContent = isChecked ? '✓' : '';
+            }
+            saveDraftToLocal();
+        }
+
+        // جمع كافة البيانات المنظمة من الاستمارة
+        function collectFormData() {
+            const form = document.getElementById('emisInputForm');
+            const getVal = (name) => {
+                const el = form.querySelector(`[name="${name}"]`);
+                return el ? el.value.trim() : '';
+            };
+            const getRadioLabel = (name) => {
+                const checked = form.querySelector(`input[name="${name}"]:checked`);
+                return checked ? (checked.getAttribute('data-label') || checked.value) : '';
+            };
+            const specialNeeds = Array.from(form.querySelectorAll('input[name="special_needs"]:checked'))
+                .map(cb => cb.value);
+
+            return {
+                academic_year: getVal('academic_year'),
+                first_name: getVal('first_name'),
+                father_name: getVal('father_name'),
+                grandfather_name: getVal('grandfather_name'),
+                great_grandfather_name: getVal('great_grandfather_name'),
+                surname: getVal('surname'),
+                dob: getVal('dob'),
+                mother_name: getVal('mother_name'),
+                mother_father_name: getVal('mother_father_name'),
+                mother_grandfather_name: getVal('mother_grandfather_name'),
+                id_type_label: getRadioLabel('id_type'),
+                id_number: getVal('id_number'),
+                issue_country: getVal('issue_country'),
+                record: getVal('record'),
+                page: getVal('page'),
+                stat_number: getVal('stat_number'),
+                gender_label: getRadioLabel('gender'),
+                nationality: getVal('nationality'),
+                birth_country: getVal('birth_country'),
+                birth_place: getVal('birth_place'),
+                mother_tongue: getVal('mother_tongue'),
+                blood_type: getVal('blood_type'),
+                religion: getVal('religion'),
+                phone: getVal('phone'),
+                study_lang: getVal('study_lang'),
+                special_needs_label: specialNeeds.length ? specialNeeds.join('، ') : 'لا يوجد',
+                living_level_label: getRadioLabel('living_level'),
+                welfare_label: getRadioLabel('welfare'),
+                grade: getVal('grade'),
+                section: getVal('section'),
+                city: getVal('city'),
+                neighborhood: getVal('neighborhood'),
+                mahalla: getVal('mahalla'),
+                zuqaq: getVal('zuqaq'),
+                address1: getVal('address1'),
+                address2: getVal('address2'),
+                landmark: getVal('landmark'),
+                email: getVal('email'),
+                organizer: getVal('organizer'),
+                guardian: getVal('guardian')
+            };
+        }
+
+        // تنسيق ملخص نصي مرتب للإرسال عبر واتساب أو النسخ
+        function buildFormattedSummary(d) {
+            const fullName = [d.first_name, d.father_name, d.grandfather_name, d.great_grandfather_name, d.surname].filter(Boolean).join(' ');
+            const motherFull = [d.mother_name, d.mother_father_name, d.mother_grandfather_name].filter(Boolean).join(' ');
+            return [
+                `📋 *استمارة معلومات طالب - نظام EMIS (${d.academic_year})*`,
+                `• *الاسم الرباعي واللقب:* ${fullName}`,
+                `• *اسم الأم الثلاثي:* ${motherFull}`,
+                `• *تاريخ التولد:* ${d.dob}`,
+                `• *نوع الهوية:* ${d.id_type_label} | *الرقم:* ${d.id_number}`,
+                `• *بلد الإصدار:* ${d.issue_country} | *السجل:* ${d.record || '-'} | *الصحيفة:* ${d.page || '-'} | *الإحصائي:* ${d.stat_number || '-'}`,
+                `• *الجنس:* ${d.gender_label} | *الجنسية:* ${d.nationality} | *فئة الدم:* ${d.blood_type || '-'}`,
+                `• *مسقط الرأس:* ${d.birth_place || '-'} | *الديانة:* ${d.religion} | *اللغة الأم:* ${d.mother_tongue} | *لغة الدرس:* ${d.study_lang}`,
+                `• *رقم الهاتف:* ${d.phone}`,
+                `• *الصف والشعبة:* ${d.grade} (${d.section})`,
+                `• *المستوى المعيشي:* ${d.living_level_label} | *الرعاية الاجتماعية:* ${d.welfare_label}`,
+                `• *الاحتياجات الخاصة:* ${d.special_needs_label}`,
+                `• *السكن:* ${d.city} - حي ${d.neighborhood} - محلة ${d.mahalla} - زقاق ${d.zuqaq}`,
+                `• *أقرب نقطة دالة:* ${d.landmark}`,
+                `• *اسم ولي الأمر:* ${d.guardian}`
+            ].join('\n');
+        }
+
+        // معالجة زر الإرسال والحفظ
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            const data = collectFormData();
+            const cfg = getEffectiveConfig();
+            const submitBtn = document.getElementById('submitBtn');
+            const statusBox = document.getElementById('cloudStatusBox');
+
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-70');
+
+            document.getElementById('formattedSummaryBox').value = buildFormattedSummary(data);
+
+            if (cfg.GOOGLE_SCRIPT_URL) {
+                statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-amber-50 text-amber-900 border border-amber-200';
+                statusBox.textContent = 'جاري إرسال وحفظ البيانات في جدول Google Sheets...';
+                openSubmitModal();
+
+                try {
+                    await fetch(cfg.GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    statusBox.className = 'p-3 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-900 border border-emerald-200';
+                    statusBox.textContent = '✓ تم إرسال وحفظ بيانات الطالب بنجاح في جدول بيانات المدرسة (Google Sheets). يمكنك أيضاً تنزيل نسخة أو إرسال تأكيد عبر واتساب.';
+                } catch (err) {
+                    statusBox.className = 'p-3 rounded-xl text-xs font-bold bg-rose-50 text-rose-900 border border-rose-200';
+                    statusBox.textContent = 'تعذر الاتصال بجدول البيانات السحابي حالياً، لكن بياناتك محفوظة محلياً ويمكنك إرسالها عبر واتساب أو تنزيلها كملف Excel (CSV) من الأزرار أدناه.';
+                }
+            } else {
+                statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200';
+                statusBox.textContent = 'تم تجهيز بيانات الطالب بنجاح! اضغط على "إرسال عبر واتساب" لإرسالها مباشرة إلى إدارة المدرسة، أو قم بتنزيل ملف Excel (CSV) / PDF.';
+                openSubmitModal();
+            }
+
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-70');
+        }
+
+        function prepareAndOpenSummary() {
+            const data = collectFormData();
+            document.getElementById('formattedSummaryBox').value = buildFormattedSummary(data);
+            const statusBox = document.getElementById('cloudStatusBox');
+            statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200';
+            statusBox.textContent = 'تم تجهيز ملخص البيانات الحالي. يمكنك نسخه أو إرساله عبر واتساب أو تنزيله كملف جدول بيانات.';
+            openSubmitModal();
+        }
+
+        function openSubmitModal() {
+            const modal = document.getElementById('submitResultModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeSubmitModal() {
+            const modal = document.getElementById('submitResultModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function copySummaryText() {
+            const box = document.getElementById('formattedSummaryBox');
+            box.select();
+            navigator.clipboard.writeText(box.value);
+            showToast('تم نسخ ملخص بيانات الطالب بنجاح');
+        }
+
+        function sendViaWhatsApp() {
+            const cfg = getEffectiveConfig();
+            const text = encodeURIComponent(document.getElementById('formattedSummaryBox').value);
+            const phone = cfg.SCHOOL_WHATSAPP.replace(/[^0-9]/g, '');
+            const url = phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
+            window.open(url, '_blank');
+        }
+
+        // تصدير البيانات كملف CSV متوافق مع Excel باللغة العربية (UTF-8 BOM)
+        function downloadStudentCSV() {
+            const d = collectFormData();
+            const columns = [
+                ["العام الدراسي", d.academic_year],
+                ["الاسم", d.first_name],
+                ["اسم الأب", d.father_name],
+                ["اسم والد الأب", d.grandfather_name],
+                ["اسم جد الأب", d.great_grandfather_name],
+                ["اللقب", d.surname],
+                ["تاريخ التولد", d.dob],
+                ["اسم الأم", d.mother_name],
+                ["اسم والد الأم", d.mother_father_name],
+                ["اسم جد الأم", d.mother_grandfather_name],
+                ["نوع الهوية", d.id_type_label],
+                ["رقم الموحدة / الجنسية", d.id_number],
+                ["بلد الإصدار", d.issue_country],
+                ["السجل", d.record],
+                ["الصحيفة", d.page],
+                ["الرقم الإحصائي", d.stat_number],
+                ["الجنس", d.gender_label],
+                ["الجنسية", d.nationality],
+                ["دولة التولد", d.birth_country],
+                ["مسقط الرأس", d.birth_place],
+                ["اللغة الأم", d.mother_tongue],
+                ["فئة الدم", d.blood_type],
+                ["الديانة", d.religion],
+                ["رقم الهاتف", d.phone],
+                ["لغة الدرس", d.study_lang],
+                ["الاحتياجات الخاصة", d.special_needs_label],
+                ["المستوى المعيشي", d.living_level_label],
+                ["منحة الرعاية الاجتماعية", d.welfare_label],
+                ["الصف الدراسي", d.grade],
+                ["الشعبة", d.section],
+                ["المدينة / القرية", d.city],
+                ["الحي", d.neighborhood],
+                ["المحلة", d.mahalla],
+                ["الزقاق", d.zuqaq],
+                ["عنوان 1", d.address1],
+                ["عنوان 2", d.address2],
+                ["أقرب نقطة دالة", d.landmark],
+                ["البريد الإلكتروني", d.email],
+                ["اسم المنظم", d.organizer],
+                ["اسم ولي الأمر", d.guardian]
+            ];
+
+            const escapeCsv = (val) => `"${String(val || '').replace(/"/g, '""')}"`;
+            const headerRow = columns.map(c => escapeCsv(c[0])).join(',');
+            const valueRow = columns.map(c => escapeCsv(c[1])).join(',');
+            const csvContent = '\uFEFF' + headerRow + '\n' + valueRow;
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const studentFile = [d.first_name, d.father_name, d.surname].filter(Boolean).join('_') || 'طالب_EMIS';
+            link.href = URL.createObjectURL(blob);
+            link.download = `استمارة_EMIS_${studentFile}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('تم تنزيل ملف Excel (CSV) بنجاح');
+        }
+
+        // حفظ واستعادة المسودة محلياً لحماية ولي الأمر من فقدان البيانات
+        function saveDraftToLocal() {
+            try {
+                const form = document.getElementById('emisInputForm');
+                const draft = { texts: {}, radios: {}, checkboxes: [] };
+                form.querySelectorAll('[data-target]').forEach(el => {
+                    draft.texts[el.getAttribute('data-target')] = el.value;
+                });
+                ['id_type', 'gender', 'living_level', 'welfare'].forEach(name => {
+                    const checked = form.querySelector(`input[name="${name}"]:checked`);
+                    if (checked) draft.radios[name] = checked.value;
+                });
+                form.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+                    draft.checkboxes.push(cb.value || cb.name);
+                });
+                localStorage.setItem(STORAGE_DRAFT_KEY, JSON.stringify(draft));
+            } catch (e) {}
+        }
+
+        function restoreDraftFromLocal() {
+            try {
+                const raw = localStorage.getItem(STORAGE_DRAFT_KEY);
+                if (!raw) return;
+                const draft = JSON.parse(raw);
+                const form = document.getElementById('emisInputForm');
+
+                if (draft.texts) {
+                    for (const [targetId, val] of Object.entries(draft.texts)) {
+                        const input = form.querySelector(`[data-target="${targetId}"]`);
+                        const out = document.getElementById(targetId);
+                        if (input && val) input.value = val;
+                        if (out && val) out.textContent = val;
+                    }
+                }
+                const radioMap = {
+                    'id_type': ['chk_id_unified', 'chk_id_nationality', 'chk_id_other'],
+                    'gender': ['chk_gender_male', 'chk_gender_female'],
+                    'living_level': ['chk_lvl_subzero', 'chk_lvl_poor', 'chk_lvl_middle', 'chk_lvl_high'],
+                    'welfare': ['chk_welfare_yes', 'chk_welfare_no']
+                };
+                if (draft.radios) {
+                    for (const [name, val] of Object.entries(draft.radios)) {
+                        const radio = form.querySelector(`input[name="${name}"][value="${val}"]`);
+                        if (radio) {
+                            radio.checked = true;
+                            updateRadioGroup(name, radioMap[name]);
+                        }
+                    }
+                }
+                if (Array.isArray(draft.checkboxes)) {
+                    form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                        const key = cb.value || cb.name;
+                        if (draft.checkboxes.includes(key)) {
+                            cb.checked = true;
+                            cb.dispatchEvent(new Event('change'));
+                        }
+                    });
+                }
+            } catch (e) {}
+        }
+
+        // إدارة نافذة إعدادات الربط
+        function openSetupModal() {
+            const cfg = getEffectiveConfig();
+            document.getElementById('cfgScriptUrl').value = cfg.GOOGLE_SCRIPT_URL;
+            document.getElementById('cfgWhatsapp').value = cfg.SCHOOL_WHATSAPP;
+            const modal = document.getElementById('setupModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeSetupModal() {
+            const modal = document.getElementById('setupModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function saveRuntimeConfig() {
+            const scriptUrl = document.getElementById('cfgScriptUrl').value.trim();
+            const whatsapp = document.getElementById('cfgWhatsapp').value.trim();
+            localStorage.setItem(STORAGE_CFG_KEY, JSON.stringify({
+                GOOGLE_SCRIPT_URL: scriptUrl,
+                SCHOOL_WHATSAPP: whatsapp
+            }));
+            showToast('تم حفظ إعدادات الربط في متصفحك');
+            closeSetupModal();
+        }
+
+        function copyAppsScriptCode() {
+            const code = document.getElementById('appsScriptSnippet').textContent;
+            navigator.clipboard.writeText(code);
+            showToast('تم نسخ كود Google Apps Script');
+        }
+
+        // تنزيل نسخة HTML مدمج بداخلها رابط Google Script ورقم الواتساب لرفعها مباشرة إلى Netlify
+        function downloadConfiguredHtml() {
+            const scriptUrl = document.getElementById('cfgScriptUrl').value.trim();
+            const whatsapp = document.getElementById('cfgWhatsapp').value.trim();
+            let fullHtml = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+            fullHtml = fullHtml.replace(/GOOGLE_SCRIPT_URL:\s*"[^"]*"/, `GOOGLE_SCRIPT_URL: ${JSON.stringify(scriptUrl)}`);
+            fullHtml = fullHtml.replace(/SCHOOL_WHATSAPP:\s*"[^"]*"/, `SCHOOL_WHATSAPP: ${JSON.stringify(whatsapp)}`);
+
+            const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'index.html';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('تم تنزيل ملف index.html جاهزاً للرفع على Netlify Drop');
+        }
+
+        // معالجة رفع وعرض الصورة الشخصية للطالب
+        const photoInput = document.getElementById('photoInput');
+        const outPhoto = document.getElementById('out_photo');
+        const photoPlaceholder = document.getElementById('photoPlaceholder');
+        const removePhotoBtn = document.getElementById('removePhotoBtn');
+
+        photoInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    outPhoto.src = e.target.result;
+                    outPhoto.classList.remove('hidden');
+                    photoPlaceholder.classList.add('hidden');
+                    removePhotoBtn.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function removePhoto() {
+            photoInput.value = '';
+            outPhoto.src = '';
+            outPhoto.classList.add('hidden');
+            photoPlaceholder.classList.remove('hidden');
+            removePhotoBtn.classList.add('hidden');
+        }
+
+        function printForm() {
+            window.print();
+        }
+
+        function confirmReset() {
+            const modal = document.getElementById('resetModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeResetModal() {
+            const modal = document.getElementById('resetModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function executeReset() {
+            document.getElementById('emisInputForm').reset();
+            document.querySelectorAll('.dotted-value').forEach(el => el.textContent = '');
+            document.querySelectorAll('.form-checkbox').forEach(el => el.textContent = '');
+            document.getElementById('chk_registered').textContent = '';
+            const yearInput = document.querySelector('[data-target="out_academic_year"]');
+            yearInput.value = '2026-2027';
+            document.getElementById('out_academic_year').textContent = '2026-2027';
+            removePhoto();
+            localStorage.removeItem(STORAGE_DRAFT_KEY);
+            closeResetModal();
+            showToast('تم مسح جميع الحقول');
+        }
+
+        function fillDemoData() {
+            const sampleData = {
+                'out_first_name': 'مصطفى',
+                'out_father_name': 'أحمد',
+                'out_grandfather_name': 'كريم',
+                'out_great_grandfather_name': 'جاسم',
+                'out_surname': 'الربيعي',
+                'out_dob': '2010/05/14',
+                'out_mother_name': 'زينب',
+                'out_mother_father_name': 'علي',
+                'out_mother_grandfather_name': 'حسن',
+                'out_id_number': '201098765432',
+                'out_issue_country': 'العراق',
+                'out_record': '412',
+                'out_page': '85',
+                'out_stat_number': '109283',
+                'out_nationality': 'عراقي',
+                'out_birth_country': 'العراق',
+                'out_birth_place': 'الأنبار - القائم',
+                'out_mother_tongue': 'العربية',
+                'out_blood_type': 'O+',
+                'out_religion': 'مسلم',
+                'out_phone': '07701234567',
+                'out_study_lang': 'العربية',
+                'out_grade': 'الرابع العلمي',
+                'out_section': 'أ',
+                'out_city': 'القائم',
+                'out_neighborhood': 'اليرموك',
+                'out_mahalla': '609',
+                'out_zuqaq': '14',
+                'out_address1': 'دار 22',
+                'out_address2': 'الشارع العام',
+                'out_landmark': 'قرب جامع الرحمن',
+                'out_email': 'mustafa.ahmed@example.com',
+                'out_organizer': 'أ. سامر خالد',
+                'out_guardian': 'أحمد كريم جاسم'
+            };
+
+            for (const [targetId, val] of Object.entries(sampleData)) {
+                const input = document.querySelector(`[data-target="${targetId}"]`);
+                const out = document.getElementById(targetId);
+                if (input) input.value = val;
+                if (out) out.textContent = val;
+            }
+
+            document.querySelector('input[name="id_type"][value="unified"]').checked = true;
+            updateRadioGroup('id_type', ['chk_id_unified', 'chk_id_nationality', 'chk_id_other']);
+
+            document.querySelector('input[name="gender"][value="male"]').checked = true;
+            updateRadioGroup('gender', ['chk_gender_male', 'chk_gender_female']);
+
+            document.querySelector('input[name="living_level"][value="middle"]').checked = true;
+            updateRadioGroup('living_level', ['chk_lvl_subzero', 'chk_lvl_poor', 'chk_lvl_middle', 'chk_lvl_high']);
+
+            document.querySelector('input[name="welfare"][value="no"]').checked = true;
+            updateRadioGroup('welfare', ['chk_welfare_yes', 'chk_welfare_no']);
+            saveDraftToLocal();
+        }
+
+
+        // Excel import/export and local student register
+        const STUDENT_RECORDS_KEY='emis_student_records_v1';
+        const EXCEL_COLUMNS=[
+        ['academic_year','العام الدراسي'],['first_name','الاسم'],['father_name','اسم الأب'],['grandfather_name','اسم والد الأب'],['great_grandfather_name','اسم جد الأب'],['surname','اللقب'],['dob','تاريخ التولد'],['mother_name','اسم الأم'],['mother_father_name','اسم والد الأم'],['mother_grandfather_name','اسم جد الأم'],['id_type_label','نوع الهوية'],['id_number','رقم الموحدة / الجنسية'],['issue_country','بلد الإصدار'],['record','السجل'],['page','الصحيفة'],['stat_number','الرقم الإحصائي'],['gender_label','الجنس'],['nationality','الجنسية'],['birth_country','دولة التولد'],['birth_place','مسقط الرأس'],['mother_tongue','اللغة الأم'],['blood_type','فئة الدم'],['religion','الديانة'],['phone','رقم الهاتف'],['study_lang','لغة الدرس'],['special_needs_label','الاحتياجات الخاصة'],['living_level_label','المستوى المعيشي'],['welfare_label','منحة الرعاية'],['grade','الصف الدراسي'],['section','الشعبة'],['city','المدينة / القرية'],['neighborhood','الحي'],['mahalla','المحلة'],['zuqaq','الزقاق'],['address1','عنوان 1'],['address2','عنوان 2'],['landmark','أقرب نقطة دالة'],['email','البريد الإلكتروني'],['organizer','اسم المنظم'],['guardian','اسم ولي الأمر']];
+        function getStudentRecords(){try{let a=JSON.parse(localStorage.getItem(STUDENT_RECORDS_KEY)||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
+        function saveStudentRecords(a){try{localStorage.setItem(STUDENT_RECORDS_KEY,JSON.stringify(a));return true}catch(e){showToast('مساحة التخزين ممتلئة؛ نزّل نسخة Excel وامسح بعض السجلات');return false}}
+        function normExcel(v){return String(v??'').trim().toLowerCase().replace(/[\\s_ـ/\\\\-]+/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه')}
+        const EXCEL_ALIASES={};
+        EXCEL_COLUMNS.forEach(([k,l])=>{EXCEL_ALIASES[normExcel(k)]=k;EXCEL_ALIASES[normExcel(l)]=k});
+        EXCEL_ALIASES[normExcel('اسم الطالب')]='first_name';EXCEL_ALIASES[normExcel('اسم ولي الامر')]='guardian';EXCEL_ALIASES[normExcel('رقم الموبايل')]='phone';
+        function importExcelStudents(ev){
+          const f=ev.target.files?.[0];if(!f)return;
+          if(!window.XLSX){showToast('مكتبة Excel لم تُحمّل؛ تحقق من الإنترنت');ev.target.value='';return}
+          const rd=new FileReader();rd.onload=e=>{try{
+            const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],data=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false});
+            const imported=data.map(row=>{let o={};Object.entries(row).forEach(([h,v])=>{let k=EXCEL_ALIASES[normExcel(h)];if(k)o[k]=String(v??'').trim()});return o}).filter(o=>o.first_name||o.father_name||o.id_number);
+            if(!imported.length){showToast('لم نتعرف على الأعمدة؛ استخدم عناوين استمارة EMIS');return}
+            const all=getStudentRecords().concat(imported);if(saveStudentRecords(all)){showToast('تم استيراد '+imported.length+' طالب');renderStudentRecords();openRecordsModal();if(imported.length===1)loadStudentRecord(all.length-1)}
+          }catch(err){console.error(err);showToast('تعذرت قراءة ملف Excel أو CSV')}finally{ev.target.value=''}};rd.readAsArrayBuffer(f);
+        }
+        function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+        function renderStudentRecords(){
+          const a=getStudentRecords(),host=document.getElementById('recordsTableHost');if(!host)return;
+          document.getElementById('recordsCount').textContent='إجمالي السجلات: '+a.length;
+          if(!a.length){host.innerHTML='<div class="p-5 text-center text-sm text-slate-500">لا توجد سجلات مستوردة حتى الآن.</div>';return}
+          host.innerHTML='<table class="emis-table"><thead><tr><th>#</th><th>اسم الطالب</th><th>الصف</th><th>رقم الهوية</th><th>الهاتف</th><th>الإجراء</th></tr></thead><tbody>'+a.map((r,i)=>'<tr><td>'+(i+1)+'</td><td>'+escapeHtml([r.first_name,r.father_name,r.surname].filter(Boolean).join(' '))+'</td><td>'+escapeHtml(r.grade||'—')+'</td><td>'+escapeHtml(r.id_number||'—')+'</td><td>'+escapeHtml(r.phone||'—')+'</td><td><button class="emis-action" onclick="loadStudentRecord('+i+')">فتح</button> <button class="emis-action secondary" onclick="deleteStudentRecord('+i+')">حذف</button></td></tr>').join('')+'</tbody></table>';
+        }
+        function openRecordsModal(){renderStudentRecords();document.getElementById('recordsModal').classList.add('open')}
+        function closeRecordsModal(){document.getElementById('recordsModal').classList.remove('open')}
+        function deleteStudentRecord(i){let a=getStudentRecords();a.splice(i,1);saveStudentRecords(a);renderStudentRecords()}
+        function clearImportedStudents(){if(confirm('حذف جميع السجلات المستوردة من هذا المتصفح؟')){saveStudentRecords([]);renderStudentRecords()}}
+        function loadStudentRecord(i){
+          const r=getStudentRecords()[i];if(!r)return;const form=document.getElementById('emisInputForm');
+          EXCEL_COLUMNS.forEach(([k])=>{const el=form.querySelector('[name="'+k+'"]');if(el&&el.type!=='radio'&&el.type!=='checkbox'){el.value=r[k]||'';const t=el.dataset.target,o=t&&document.getElementById(t);if(o)o.textContent=el.value}});
+          const groups={id_type:{'بطاقة موحدة':'unified','جنسية عراقية':'nationality','أخرى':'other'},gender:{'ذكر':'male','أنثى':'female'},living_level:{'تحت الصفر':'subzero','الطبقة الفقيرة':'poor','الطبقة الوسطى':'middle','الطبقة العليا':'high'},welfare:{'نعم':'yes','لا':'no'}};
+          const ids={id_type:['chk_id_unified','chk_id_nationality','chk_id_other'],gender:['chk_gender_male','chk_gender_female'],living_level:['chk_lvl_subzero','chk_lvl_poor','chk_lvl_middle','chk_lvl_high'],welfare:['chk_welfare_yes','chk_welfare_no']};
+          Object.entries(groups).forEach(([n,m])=>{let v=m[r[n+'_label']];if(v){let el=form.querySelector('input[name="'+n+'"][value="'+v+'"]');if(el){el.checked=true;updateRadioGroup(n,ids[n])}}});
+          form.querySelectorAll('input[name="special_needs"]').forEach(el=>el.checked=(r.special_needs_label||'').split(/[،,]/).map(x=>x.trim()).includes(el.value));
+          saveDraftToLocal();closeRecordsModal();showToast('تم تحميل بيانات الطالب');window.scrollTo({top:0,behavior:'smooth'});
+        }
+
+        function makeExcelFile(rows,filename,sheetName){
+          if(!window.XLSX){showToast('مكتبة Excel غير متاحة');return}
+          const ws=XLSX.utils.json_to_sheet(rows);ws['!cols']=EXCEL_COLUMNS.map(([k,l])=>({wch:Math.max(15,Math.min(28,l.length+8))}));
+          const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,sheetName||'بيانات الطلاب');XLSX.writeFile(wb,filename);
+        }
+        function downloadCurrentStudentExcel(){
+          const d=collectFormData(),row=Object.fromEntries(EXCEL_COLUMNS.map(([k,l])=>[l,d[k]||'']));
+          const n=[d.first_name,d.father_name,d.surname].filter(Boolean).join('_')||'Student';
+          makeExcelFile([row],'EMIS_'+n+'.xlsx','بيانات الطالب');
+        }
+        function downloadExcelTemplate(){
+          const sample=Object.fromEntries(EXCEL_COLUMNS.map(([k,l])=>[l,'']));
+          makeExcelFile([sample],'EMIS_Excel_Template.xlsx','قالب البيانات');
+        }
+        function exportAllStudentsExcel(){
+          const a=getStudentRecords();if(!a.length){showToast('لا توجد سجلات');return}if(!window.XLSX){showToast('مكتبة Excel غير متاحة');return}
+          const rows=a.map(r=>Object.fromEntries(EXCEL_COLUMNS.map(([k,l])=>[l,r[k]||'']))),ws=XLSX.utils.json_to_sheet(rows);
+          ws['!cols']=EXCEL_COLUMNS.map(([k,l])=>({wch:Math.max(15,Math.min(28,l.length+8))}));
+          const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'بيانات الطلاب');XLSX.writeFile(wb,'EMIS_Students.xlsx');
+        }
+        async function downloadStudentPDF(){
+          const el=document.getElementById('printableArea');if(!el){printForm();return}
+          if(!window.html2pdf){showToast('أداة PDF غير متاحة؛ استخدم الطباعة ثم حفظ PDF');printForm();return}
+          const d=collectFormData(),name=[d.first_name,d.father_name,d.surname].filter(Boolean).join('_')||'Student';
+          showToast('جارٍ تجهيز PDF...');
+          try{await html2pdf().set({margin:0,filename:'EMIS_'+name+'.pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true,backgroundColor:'#fff',scrollY:0},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['avoid-all','css']}}).from(el).save();showToast('تم تنزيل PDF بنجاح')}
+          catch(e){console.error(e);showToast('تعذر إنشاء PDF؛ استخدم الطباعة ثم حفظ PDF')}
+        }
+
+        // استعادة المسودة عند تحميل الصفحة
+        window.addEventListener('DOMContentLoaded', restoreDraftFromLocal);
+    
+</script>
+
+
+<script async="" src="/.netlify/scripts/hud?variant=public" data-nf-variant="public" data-netlify-site-id="00c0973e-1892-4711-8d7e-c2de30adea6d" data-app-host="app.netlify.com" data-account-tier="free"></script>
+</body></html>
